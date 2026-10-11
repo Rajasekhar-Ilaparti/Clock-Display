@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clock Sync</title>
+<style>
+  :root {
+    --bg: #0f1115; --card: #181b22; --text: #e8eaf0; --muted: #8a90a0;
+    --accent: #ff3b3b; --ok: #3ddc84; --border: #2a2f3a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    display: flex; justify-content: center; padding: 24px 16px;
+  }
+  main { width: 100%; max-width: 440px; display: grid; gap: 16px; }
+  h1 { font-size: 20px; margin: 0; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .preview {
+    font-family: "Courier New", monospace; font-weight: bold; font-size: 64px;
+    text-align: center; color: var(--accent); letter-spacing: 4px;
+    text-shadow: 0 0 12px rgba(255,59,59,.6); background: #000; border-radius: 10px; padding: 12px 0;
+  }
+  .date { text-align: center; color: var(--muted); margin-top: 8px; font-size: 14px; }
+  button {
+    width: 100%; padding: 14px; font-size: 16px; font-weight: 600; border-radius: 10px;
+    border: 1px solid var(--border); background: #232733; color: var(--text); cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .status { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); margin-bottom: 12px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #555; }
+  .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  label { font-size: 14px; color: var(--muted); display: block; margin-bottom: 6px; }
+  input[type=datetime-local] {
+    width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: #0f1115; color: var(--text); font-size: 16px; margin-bottom: 10px;
+  }
+  #log {
+    font-family: monospace; font-size: 12px; background: #000; border-radius: 8px;
+    padding: 10px; height: 150px; overflow-y: auto; white-space: pre-wrap; color: #9fe6b8;
+  }
+  footer { text-align: center; font-size: 14px; color: var(--muted); padding: 8px 0 16px; }
+  footer a {
+    color: var(--text); text-decoration: none; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px; margin-left: 4px;
+  }
+  footer a:hover { color: var(--accent); }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 10px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>⏰ Clock Sync</h1>
+
+  <div class="card">
+    <div class="preview" id="preview">--:--</div>
+    <div class="date" id="date"></div>
+  </div>
+
+  <div class="card">
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">Not connected</span></div>
+    <button id="btnConnect">Connect HC-05</button>
+    <p class="hint">
+      Pair the HC-05 in your Bluetooth settings first (PIN 1234 or 0000).
+      Use the latest Chrome on Android or PC. On PC, pick the HC-05 or its <b>Outgoing</b> COM port.
+    </p>
+  </div>
+
+  <div class="card" style="display:grid;gap:10px">
+    <button class="primary" id="btnSyncNow" disabled>Sync to this device's time</button>
+    <div>
+      <label for="custom">Or set a custom time</label>
+      <input type="datetime-local" id="custom" step="1">
+      <button id="btnSyncCustom" disabled>Send custom time</button>
+    </div>
+    <button id="btnDisconnect" disabled>Disconnect</button>
+  </div>
+
+  <div class="card">
+    <label>Log</label>
+    <div id="log"></div>
+  </div>
+
+  <footer>
+    Created by
+    <a href="https://github.com/Rajasekhar-Ilaparti" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      Rajasekhar-Ilaparti
+    </a>
+  </footer>
+</main>
+
+<script>
+// Bluetooth Serial Port Profile (used by HC-05 / HC-06)
+const SPP_UUID = "00001101-0000-1000-8000-00805f9b34fb";
+
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, "0");
+
+let port, writer, reader;
+let connected = false;
+let rxText = "";
+
+function log(msg) {
+  const t = new Date().toLocaleTimeString();
+  $("log").textContent += `[${t}] ${msg}\n`;
+  $("log").scrollTop = $("log").scrollHeight;
+}
+
+function setConnected(on) {
+  connected = on;
+  $("dot").classList.toggle("on", on);
+  $("statusText").textContent = on ? "Connected" : "Not connected";
+  $("btnSyncNow").disabled = $("btnSyncCustom").disabled = $("btnDisconnect").disabled = !on;
+  $("btnConnect").disabled = on;
+}
+
+// ---------- Live preview ----------
+let colon = true;
+setInterval(() => {
+  const d = new Date();
+  colon = !colon;
+  $("preview").textContent = `${pad(d.getHours())}${colon ? ":" : " "}${pad(d.getMinutes())}`;
+  $("date").textContent = d.toDateString();
+}, 500);
+
+// Prefill custom input with current time
+(() => {
+  const d = new Date();
+  $("custom").value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+})();
+
+// ---------- Incoming data ----------
+function handleIncoming(text) {
+  rxText += text;
+  let i;
+  while ((i = rxText.search(/[\r\n]/)) >= 0) {
+    const line = rxText.slice(0, i).trim();
+    rxText = rxText.slice(i + 1);
+    if (!line) continue;
+    log("← " + line);
+    if (line === "SYNC_OK") log("✅ Clock updated!");
+    if (line.startsWith("FORMAT_ERROR")) log("❌ Clock didn't understand the command");
+    if (line === "INVALID_TIME") log("❌ Clock rejected the time values");
+  }
+}
+
+// ---------- Connect ----------
+$("btnConnect").onclick = async () => {
+  if (!("serial" in navigator)) {
+    log("Not supported in this browser. Use the latest Chrome (Android or PC).");
+    return;
+  }
+  try {
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    port = await navigator.serial.requestPort(
+      isAndroid
+        ? { filters: [{ bluetoothServiceClassId: SPP_UUID }], allowedBluetoothServiceClassIds: [SPP_UUID] }
+        : { allowedBluetoothServiceClassIds: [SPP_UUID] }
+    );
+    await port.open({ baudRate: 9600 });
+    writer = port.writable.getWriter();
+    setConnected(true);
+    log("Connected to clock");
+    readLoop();
+  } catch (e) {
+    log("Connect error: " + e.message);
+  }
+};
+
+async function readLoop() {
+  const decoder = new TextDecoder();
+  while (port && port.readable && connected) {
+    reader = port.readable.getReader();
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        handleIncoming(decoder.decode(value));
+      }
+    } catch (e) {
+      if (connected) {
+        log("Connection lost: " + e.message);
+        setConnected(false);
+      }
+      break;
+    } finally {
+      reader.releaseLock();
+    }
+  }
+}
+
+// ---------- Sending ----------
+async function syncTime(d) {
+  const cmd = `TIME,${d.getFullYear()},${d.getMonth()+1},${d.getDate()},${d.getHours()},${d.getMinutes()},${d.getSeconds()}`;
+  log("→ " + cmd);
+  try {
+    await writer.write(new TextEncoder().encode(cmd + "\r\n"));
+  } catch (e) {
+    log("Send error: " + e.message);
+  }
+}
+
+$("btnSyncNow").onclick = () => {
+  $("btnSyncNow").disabled = true;
+  // Wait for the start of the next second so the clock is exact
+  setTimeout(() => {
+    syncTime(new Date());
+    if (connected) $("btnSyncNow").disabled = false;
+  }, 1000 - new Date().getMilliseconds());
+};
+
+$("btnSyncCustom").onclick = () => {
+  const v = $("custom").value;
+  if (!v) return log("Pick a date and time first");
+  syncTime(new Date(v));
+};
+
+// ---------- Disconnect ----------
+$("btnDisconnect").onclick = async () => {
+  connected = false;
+  try {
+    if (reader) await reader.cancel().catch(() => {});
+    if (writer) { writer.releaseLock(); writer = null; }
+    if (port) await port.close();
+  } catch (e) {
+    log("Disconnect error: " + e.message);
+  }
+  setConnected(false);
+  log("Disconnected");
+};
+
+log("Ready. Tap Connect HC-05.");
+</script>
+</body>
+</html>
